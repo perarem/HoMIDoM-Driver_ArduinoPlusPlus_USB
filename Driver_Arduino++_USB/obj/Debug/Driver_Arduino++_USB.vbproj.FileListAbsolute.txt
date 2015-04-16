@@ -1,8 +1,3 @@
-C:\SVN\HoMIDoM\DEBUG\Drivers\Driver_Arduino++_USB.dll
-C:\SVN\HoMIDoM\DEBUG\Drivers\Driver_Arduino++_USB.pdb
-C:\SVN\HoMIDoM\DEBUG\Drivers\Driver_Arduino++_USB.xml
+C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.vbprojResolveAssemblyReference.cache
 C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_ArduinoPlusPlus_USB.Resources.resources
 C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.vbproj.GenerateResource.Cache
-C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.dll
-C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.xml
-C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.pdb

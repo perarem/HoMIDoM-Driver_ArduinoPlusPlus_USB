@@ -1,6 +1,6 @@
 ﻿Imports HoMIDom
-Imports HoMIDom.HoMIDom.Server
 Imports HoMIDom.HoMIDom.Device
+Imports HoMIDom.HoMIDom.Server
 Imports STRGS = Microsoft.VisualBasic.Strings
 Imports System.IO.Ports
 Imports System.Text.RegularExpressions
@@ -339,7 +339,6 @@ Public Class Driver_ArduinoPlusPlus_USB
                 serialPortObj.DataBits = 8
                 serialPortObj.StopBits = 1
                 serialPortObj.ReadTimeout = 50000
-                'serialPortObj.Encoding = System.Text.Encoding.ASCII
 
                 If _RCVERROR Then AddHandler serialPortObj.ErrorReceived, New SerialErrorReceivedEventHandler(AddressOf serialPortObj_ErrorReceived)
                 AddHandler serialPortObj.DataReceived, New SerialDataReceivedEventHandler(AddressOf DataReceived)
@@ -358,6 +357,20 @@ Public Class Driver_ArduinoPlusPlus_USB
             End If
         Catch ex As Exception
             _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Start", ex.ToString)
+        End Try
+
+        ' Initialisation des I/O utilisées
+        Try
+            Dim ListeDevices As New ArrayList
+            ListeDevices = _Server.ReturnDeviceByDriver(_idsrv, Me._ID, True)
+            If ListeDevices IsNot Nothing Then
+                For Each _dev In ListeDevices
+                    _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Liste de composants : ", "Arduino N° " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Valeur " & _dev.valeur.ToString)
+                Next
+            End If
+
+        Catch ex As Exception
+
         End Try
     End Sub
 
@@ -385,9 +398,6 @@ Public Class Driver_ArduinoPlusPlus_USB
 
     ''' <summary>Intérroger un device</summary>
     ''' <param name="Objet">Objet représetant le device à interroger</param>
-    ''' <param name="Command">La commande à passer</param>
-    ''' <param name="Parametre1"></param>
-    ''' <param name="Parametre2"></param>
     ''' <remarks></remarks>
     Public Sub Read(ByVal Objet As Object) Implements HoMIDom.HoMIDom.IDriver.Read
         Try
@@ -420,24 +430,22 @@ Public Class Driver_ArduinoPlusPlus_USB
             '            Exit Sub
             '    End Select
             'Else
-            Dim aryAdresse() As String
-            aryAdresse = Objet.Adresse1.Split("_") 'Adresse 1 contient l'adresse de l'arduino et ne N° de pin.
             Select Case UCase(Objet.Modele)
                 Case "ANALOG_IN"
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " AR " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " AR " & Objet.Adresse2
                     WriteLog("DBG: Commande passée à l arduino de type : ANALOG_IN")
                 Case "DIGITAL_IN"
                     WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_IN")
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " DR " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DR " & Objet.Adresse2
                 Case "DHTXX"
                     WriteLog("DBG: Commande passée à l arduino de type : DHTXX")
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " DHTXX " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DHTXX " & Objet.Adresse2
                 Case "BMP180"
                     WriteLog("DBG: Commande passée à l arduino de type : BMP180")
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " BMP180 " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " BMP180 " & Objet.Adresse2
                 Case "CUSTOM"
                     WriteLog("DBG: Commande passée à l arduino de type : CUSTOM")
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " " & Objet.Adresse2
                 Case "1WIRE"
                     WriteLog("le 1-wire n'est pas encore géré :" & Objet.Name)
                     Exit Sub
@@ -482,22 +490,20 @@ Public Class Driver_ArduinoPlusPlus_USB
             End If
 
             Dim arduinocommande As String = ""
-            Dim aryAdresse() As String
-            aryAdresse = Objet.Adresse1.Split("_") 'Adresse 1 contient l'adresse de l'arduino et ne N° de pin.
 
             Select Case UCase(Objet.Modele)
                 Case "ANALOG_IN"
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " AR " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " AR " & Objet.Adresse2
                     WriteLog("DBG: Commande passée à l arduino de type : ANALOG_IN")
                 Case "DIGITAL_IN"
                     WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_IN")
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " DR " & aryAdresse(1)
+                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DR " & Objet.Adresse2
                 Case "DIGITAL_OUT"
                     'Digital Write
                     WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_OUT")
                     Select Case Command
-                        Case "ON" : arduinocommande = "RF ADR " & aryAdresse(0) & " DW " & aryAdresse(1) & " 1"
-                        Case "OFF" : arduinocommande = "RF ADR " & aryAdresse(0) & " DW " & aryAdresse(1) & " 0"
+                        Case "ON" : arduinocommande = "RF ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " 1"
+                        Case "OFF" : arduinocommande = "RF ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " 0"
                         Case Else
                             WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF supporté sur une SORTIE: digital write)")
                             Exit Sub
@@ -507,14 +513,14 @@ Public Class Driver_ArduinoPlusPlus_USB
                     'on convertit ON/OFF/DIM en DIM de 0 à 255 (commande PWM sur l'arduino)
                     WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_PWM")
                     Select Case Command
-                        Case "ON" : arduinocommande = "RF ADR " & aryAdresse(0) & " PWM " & aryAdresse(1) & " 255"
-                        Case "OFF" : arduinocommande = "RF ADR " & aryAdresse(0) & " PWM " & aryAdresse(1) & " 0"
+                        Case "ON" : arduinocommande = "RF ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse2 & " 255"
+                        Case "OFF" : arduinocommande = "RF ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse2 & " 0"
                         Case "DIM"
                             If Not IsNothing(Parametre1) Then
                                 If IsNumeric(Parametre1) Then
                                     'Conversion du parametre de % (0 à 100) en 0 à 255
                                     Parametre1 = CInt(Parametre1 * 255 / 100)
-                                    arduinocommande = "RF ADR " & aryAdresse(0) & " DW " & aryAdresse(1) & " " & Parametre1
+                                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " " & Parametre1
                                 Else
                                     WriteLog("ERR: WRITE DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
                                 End If
@@ -526,7 +532,7 @@ Public Class Driver_ArduinoPlusPlus_USB
                                 If IsNumeric(Parametre1) Then
                                     If CInt(Parametre1) > 255 Then Parametre1 = 255
                                     If CInt(Parametre1) < 0 Then Parametre1 = 0
-                                    arduinocommande = "RF ADR " & aryAdresse(0) & " PWM " & aryAdresse(1) & " " & Parametre1
+                                    arduinocommande = "RF ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse1 & " " & Parametre1
                                 Else
                                     WriteLog("ERR: WRITE DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
                                 End If
@@ -537,9 +543,6 @@ Public Class Driver_ArduinoPlusPlus_USB
                             WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF/DIM/PWM supporté sur une SORTIE: Analogique write)")
                             Exit Sub
                     End Select
-                Case "CUSTOM"
-                    WriteLog("DBG: Commande passée à l arduino de type : CUSTOM")
-                    arduinocommande = "RF ADR " & aryAdresse(0) & " " & aryAdresse(1)
                 Case ""
                     WriteLog("ERR: WRITE Pas de protocole d'emission pour " & Objet.Name)
                     Exit Sub
@@ -547,9 +550,6 @@ Public Class Driver_ArduinoPlusPlus_USB
                     WriteLog("ERR: WRITE Protocole non géré : " & Objet.Modele.ToString.ToUpper)
                     Exit Sub
             End Select
-
-            'If arduinocommande <> "" Then
-            'If _DEBUG Then WriteLog("DBG: WRITE Composant " & Objet.Name & " URL : " & arduinocommande)
 
             WriteLog("DBG: Commande passée à l arduino : " & arduinocommande)
             serialPortObj.WriteLine(arduinocommande) ', 0, 8)
@@ -693,10 +693,10 @@ Public Class Driver_ArduinoPlusPlus_USB
             Add_LibelleDriver("HELP", "Aide...", "Pas d'aide actuellement...")
 
             'Libellé Device
-            Add_LibelleDevice("ADRESSE1", "Adresse Arduino", "Adresse de l arduino gérant ce composant (1:Arduino maitre ou 2-255: Arduino esclave)")
-            Add_LibelleDevice("ADRESSE2", "Numéro du PIN ou Modèle et Adresse du Modèle(optionel)", "Numéro de PIN ou de MODELE sur l arduino et Adresse du modèle si nécessaire (par ex. pour 1-Wire) (ex: 1[,125A32E748])")
+            Add_LibelleDevice("ADRESSE1", "Adresse Arduino", "Adresse de l arduino gérant ce composant (0:Arduino maitre ou 1-255: Arduino esclave)")
+            Add_LibelleDevice("ADRESSE2", "Numéro du PIN ou de périphérique connecté à l'arduino", "Valeur de type numérique")
             Add_LibelleDevice("SOLO", "@", "")
-            Add_LibelleDevice("MODELE", "TYPE PIN/MODELE", "Type de PIN : ANALOG_IN(Analogique Read)/DIGITAL_IN(Digital Read)/DIGITAL_OUT(Digital write: ON/OFF)/DIGITAL_PWM(Analogique write: 0-255) ou de Modèle : 1WIRE", "ANALOG_IN|DIGITAL_IN|DIGITAL_OUT|DIGITAL_PWM|1WIRE|DHTXX|BMP180|RTC|CUSTOM")
+            Add_LibelleDevice("MODELE", "TYPE PIN/MODELE", "Type de PIN : ANALOG_IN(Analogique Read)/DIGITAL_IN(Digital Read)/DIGITAL_OUT(Digital write: ON/OFF)/DIGITAL_PWM(Analogique write: 0-255) ou de Modèle : 1WIRE", "ANALOG_IN|DIGITAL_IN|DIGITAL_OUT|DIGITAL_PWM|1WIRE|DHTXX|BMP180|RTC")
             Add_LibelleDevice("REFRESH", "@", "")
             'Add_LibelleDevice("LASTCHANGEDUREE", "LastChange Durée", "")
         Catch ex As Exception
@@ -752,28 +752,33 @@ Public Class Driver_ArduinoPlusPlus_USB
                 Dim line As String = serialPortObj.ReadExisting
                 line = line.Replace(vbCr, "").Replace(vbLf, "")
                 _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " DataReceived", "Données reçues: " & line)
-                Dim i As Integer
                 Dim aryLine() As String
                 aryLine = line.Split(" ")
                 If UBound(aryLine) >= 5 Then
-                    'Dim Adresse1 As String = aryLine(2) + "_" + aryLine(4)
+                    Dim Adresse1 As String = aryLine(2)
+                    Dim Commande As String = aryLine(3)
+                    Dim Adresse2 As String = aryLine(4)
+                    Dim Valeur As String = aryLine(5)
                     Select Case aryLine(3)
                         Case "AW"
-                            _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & aryLine(3) & " Commande executée")
+                            traitement("", Adresse1, Adresse2, Valeur)
+                            '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & Commande & " Commande executée")
                         Case "AR"
-                            traitement("", aryLine(2) + "_" + aryLine(4), aryLine(5))
+                            traitement("", Adresse1, Adresse2, Valeur)
                         Case "DW"
-                            _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & aryLine(3) & " Commande executée")
+                            traitement("", Adresse1, Adresse2, Valeur)
+                            '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & Commande & " Commande executée")
                         Case "PWM"
-                            _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & aryLine(3) & " Commande executée")
+                            traitement("", Adresse1, Adresse2, Valeur)
+                            ' _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & Commande & " Commande executée")
                         Case "DR"
-                            traitement("", aryLine(2) + "_" + aryLine(4), aryLine(5))
+                            traitement("", Adresse1, Adresse2, Valeur)
                         Case "DHTXX"
-                            traitement("", aryLine(2) + "_" + aryLine(4), aryLine(5))
+                            traitement("", Adresse1, Adresse2, Valeur)
                         Case "BMP180"
-                            traitement("", aryLine(2) + "_" + aryLine(4), aryLine(5))
+                            traitement("", Adresse1, Adresse2, Valeur)
                         Case Else
-                            _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Datareceived", "Erreur:" & aryLine(3) & " Commande inconnue !")
+                            _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Datareceived", "Erreur:" & Commande & " Commande inconnue !")
                     End Select
                 End If
             End If
@@ -785,7 +790,7 @@ Public Class Driver_ArduinoPlusPlus_USB
 
     ''' <summary>Traite les paquets reçus</summary>
     ''' <remarks></remarks>
-    Private Sub traitement(ByVal type As String, ByVal adresse As String, ByVal valeur As String)
+    Private Sub traitement(ByVal type As String, ByVal adresse As String, ByVal adresse2 As String, ByVal valeur As String)
         '    Private Sub traitement(ByVal adresse As String, ByVal valeur As String)
         Try
             'correction valeur
@@ -799,7 +804,13 @@ Public Class Driver_ArduinoPlusPlus_USB
             If (listedevices.Count = 1) Then
                 listedevices.Item(0).Value = valeur
             ElseIf (listedevices.Count > 1) Then
-                _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Process", "Plusieurs devices correspondent à : " & adresse)
+                For i As Integer = 0 To listedevices.Count - 1
+                    If (listedevices.Item(i).adresse2.ToUpper() = adresse2.ToUpper()) Then
+                        listedevices.Item(i).Value = valeur
+                        _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Reception : ", "Arduino N° " & adresse & " Pin " & adresse2 & " Valeur " & valeur)
+                    End If
+                Next
+                '_Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Process", "Plusieurs devices correspondent à : " & adresse)
                 ' Else
                 ' 'si autodiscover = true ou modedecouverte du serveur actif alors on crée le composant sinon on logue
                 ' If _AutoDiscover Or _Server.GetModeDecouverte Then
@@ -808,7 +819,7 @@ Public Class Driver_ArduinoPlusPlus_USB
                 ' Else
                 ' _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Process", "Device non trouvé : " & type & " " & adresse & ":" & valeur)
                 ' End If
-            End If
+                    End If
         Catch ex As Exception
             _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " traitement", "Exception : " & ex.Message & " --> " & adresse & " : " & valeur)
         End Try
@@ -831,5 +842,8 @@ Public Class Driver_ArduinoPlusPlus_USB
 
 #End Region
 
+    Protected Overrides Sub Finalize()
+        MyBase.Finalize()
+    End Sub
 End Class
 

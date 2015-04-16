@@ -7,7 +7,7 @@
     </ProductVersion>
     <SchemaVersion>
     </SchemaVersion>
-    <ProjectGuid>{6A123B7C-24C7-43C1-AC0D-FB7EAC7CFB16}</ProjectGuid>
+    <ProjectGuid>{45E0DD7E-6590-4657-8C2A-F2CFB63AF398}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Driver_ArduinoPlusPlus_USB</RootNamespace>
     <AssemblyName>Driver_Arduino++_USB</AssemblyName>
@@ -66,6 +66,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -144,7 +145,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties BuildVersion_UpdateAssemblyVersion="True" BuildVersion_UpdateFileVersion="True" BuildVersion_BuildVersioningStyle="None.None.Increment.None" BuildVersion_UseGlobalSettings="True" BuildVersion_IncrementBeforeBuild="True" />
+      <UserProperties BuildVersion_IncrementBeforeBuild="True" BuildVersion_UseGlobalSettings="True" BuildVersion_BuildVersioningStyle="None.None.Increment.None" BuildVersion_UpdateFileVersion="True" BuildVersion_UpdateAssemblyVersion="True" />
     </VisualStudio>
   </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
