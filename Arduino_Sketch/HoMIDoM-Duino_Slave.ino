@@ -8,6 +8,7 @@
 
 #include <VirtualWire.h>
 #include <Wire.h>
+//#include "DHTxx.h"
 
 // Zone definition RTC (Optionnel) //
 #include <RTClib.h>
@@ -33,15 +34,56 @@ DeviceAddress Sonde_1 = { 0x28, 0xFF, 0x5B, 0x25, 0x62, 0x14, 0x03, 0x83 };
 #define DHTTYPE DHT22    // Type de sonde : DHT11, DHT 22 (AM2302),DHT 21 (AM2301)
 DHT dht(DHTPIN, DHTTYPE);
 
-// Zone définotion des constantes (a adapter en fonction de la configuration)
+// Zone définition LCD //
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8, 7, 14, 15, 16, 17);           // select the pins used on the LCD panel
+int lcd_key     = 0;
+int adc_key_in  = 0;
+#define btnRIGHT  0
+#define btnUP     1
+#define btnDOWN   2
+#define btnLEFT   3
+#define btnSELECT 4
+#define btnNONE   5
+
+int read_LCD_buttons(){               // read the buttons
+    adc_key_in = analogRead(0);       // read the value from the sensor 
+
+    // my buttons when read are centered at these valies: 0, 144, 329, 504, 741
+    // we add approx 50 to those values and check to see if we are close
+    // We make this the 1st option for speed reasons since it will be the most likely result
+
+    if (adc_key_in > 1000) return btnNONE; 
+/*
+    // For V1.1 us this threshold
+    if (adc_key_in < 50)   return btnRIGHT;  
+    if (adc_key_in < 250)  return btnUP; 
+    if (adc_key_in < 450)  return btnDOWN; 
+    if (adc_key_in < 650)  return btnLEFT; 
+    if (adc_key_in < 850)  return btnSELECT;  
+*/
+
+   // For V1.0 comment the other threshold and use the one below:
+     if (adc_key_in < 50)   return btnRIGHT;  
+     if (adc_key_in < 195)  return btnUP; 
+     if (adc_key_in < 380)  return btnDOWN; 
+     if (adc_key_in < 555)  return btnLEFT; 
+     if (adc_key_in < 790)  return btnSELECT;   
+
+    return btnNONE;                // when all others fail, return this.
+}
+
+// Zone définition des constantes (a adapter en fonction de la configuration)
 const int ID_ARDUINO = 2;       // Adresse du module Arduino peripherique (1 - 99)
 const int led_pin = 13;         // Pin de la LED de test (carte Arduino) - NE PAS MODIFIER !
 const int transmit_pin = 12;    // Pin connectée au module transmeteur RF
 const int receive_pin = 11;     // Pin connectée au module emeteur RF
-const int transmit_en_pin = 10; // Pin connectée au module transmeteur RF (Enable) (Optionnel)
+const int transmit_en_pin = NULL; // Pin connectée au module transmeteur RF (Enable) (Optionnel)
 
 // Zone définition des variables
 String AckMsgTmp;
+
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 void setup()
 {
@@ -71,11 +113,31 @@ void setup()
 // Activation des modules DHTxx //
     dht.begin();
 
+// Activation du module LCD
+    lcd.begin(16, 2);               // start the library
+    lcd.setCursor(0,0);             // set the LCD cursor   position 
+    lcd.print("Initialisation...");  // print a simple message on the LCD
+
     pinMode(led_pin, OUTPUT); // Programation de la pin 13 en mode "Digital Output" 
-    Serial.println("Initialisation terminee !");
+    Serial.println("INIT ADR " + String(ID_ARDUINO) + " OK");
+    
+    String AckMsgTmp = "INIT ADR " + String(ID_ARDUINO) + " OK";
+    char AckMsg[AckMsgTmp.length()+1];
+    AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+    RF_Send(AckMsg);
 }
 
 void loop() {
+  RF_Rec(); // Reception d'une trame RF
+  LCD_Key(); // Lecture du clavier LCD
+}
+
+// ####################################  ####################################
+void LCD_Key(){
+}
+
+// #################################### Reception d'une trame RF ####################################
+void RF_Rec(){
   uint8_t buf[VW_MAX_MESSAGE_LEN]="";
   uint8_t buflen = VW_MAX_MESSAGE_LEN;
   char *str;
@@ -88,30 +150,30 @@ void loop() {
     Serial.println(p);
     digitalWrite(led_pin, HIGH);
     str = strtok_r(p, " ", &p);
+    str = strtok_r(p, " ", &p);
 
 // Detection du debut de trame //
     if (strcmp(str,"ADR") == 0) {
       str = strtok_r(p, " ", &p);
-/*
-      String strtmp = String(str);
-      String firstVal, secondVal;
-      int i;
-      for (i = 0; i < strtmp.length(); i++) {
-        if (strtmp.substring(i, i+1) == "_") { break; }
-      }
-          firstVal = strtmp.substring(0, i);
-          secondVal = strtmp.substring(i+1);
-      Serial.print(strtmp);
-      Serial.print(" - ");
-      Serial.print(firstVal);
-      Serial.print(" - ");
-      Serial.println(secondVal);
-      char str2[firstVal.length()+1];
-      firstVal.toCharArray(str2,firstVal.length()+1);
- */
-        if (atoi(str) == ID_ARDUINO) { // La commande concerne bien cet Arduino...
+      if (atoi(str) == ID_ARDUINO) { // La commande concerne bien cet Arduino...
         str = strtok_r(p, " ", &p);
         
+// Traitemant d'une commande VW ) //
+        if (strcmp(str,"VW")== 0) {
+          AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " VW ";
+          char AckMsg[AckMsgTmp.length()+1];
+          AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+          RF_Send(AckMsg);
+        }
+
+// Traitemant d'une commande VR ) //
+        if (strcmp(str,"VR")== 0) {
+          AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " VR ";
+          char AckMsg[AckMsgTmp.length()+1];
+          AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+          RF_Send(AckMsg);
+        }
+
 // Traitemant d'une commande DR (Digital Read) //
         if (strcmp(str,"DR") == 0) {
           // Action : Lecture d'une broche numérique.
@@ -239,7 +301,7 @@ void loop() {
           if (isnan(h) || isnan(t)) { 
             //Serial.println("Failed to read from DHTXX sensor!"); 
           } 
-          String AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " DHTXX " + pin + " " + String(t) + " " + String(h);
+          String AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " DHTXX " + pin + " " + String(h) + " " + String(t);
           char AckMsg[AckMsgTmp.length()+1];
           AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
           RF_Send(AckMsg);
@@ -293,28 +355,79 @@ void loop() {
             RF_Send(AckMsg);
           }
         }
+// Traitement d'un ecran LCD //
+        if (strcmp(str,"LCD") == 0) {
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          int pin = atoi(str);
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          int val = atoi(str);
+          digitalWrite(pin, val);
+          AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " LCD " + String(pin) + " " + String(val);
+          char AckMsg[AckMsgTmp.length()+1];
+          AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+          RF_Send(AckMsg);
+          }
+        if (strcmp(str,"SETLCD") == 0) {
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          String param1 = str;
+          int CurCol, CurLgn;
+          for (int i = 0; i < param1.length(); i++) {
+            if (param1.substring(i, i+1) == ",") {
+              CurCol = param1.substring(0, i).toInt();
+              CurLgn = param1.substring(i+1).toInt();
+              break;
+            }
+          }
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          String param2 = str;
+          param2.replace("/#"," ");
+          lcd.setCursor(CurCol,CurLgn);
+          lcd.print(param2);
+          AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " SETLCD " + String(param1) + " " + String(param2);
+          char AckMsg[AckMsgTmp.length()+1];
+          AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+          RF_Send(AckMsg);
+          }
       }
     }
   }
 }
 
-// Action : Réponse du périphérique.
+// #################################### Emission d'une trame RF. ####################################
 void RF_Send(char* AckMsg) {
   Serial.println(AckMsg);
-  delay(300);
+  //delay(300);
   vw_send((uint8_t *)AckMsg, strlen(AckMsg));
-  vw_wait_tx(); // Wait until the whole message is gone
+  vw_wait_tx(); // Attente fin emission du message
 }
 
-// Action : Reset interfaces.
+// ################################# Réinitialisation de l'Arduino. #################################
 void reset_command() {
   AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " RESET";
   char AckMsg[AckMsgTmp.length()+1]; 
   AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
   RF_Send(AckMsg);
+  delay(500);
+  resetFunc();  //call reset
 }
 
-// Action : Retour Message d'erreur (Nombre d'argument insuffisant).
+// #################### Retour Message d'erreur (Nombre d'argument insuffisant). ####################
 void argument_error() {
   AckMsgTmp = "ERR argument_error ADR " + String(ID_ARDUINO);
   char AckMsg[AckMsgTmp.length()+1]; 
@@ -322,7 +435,7 @@ void argument_error() {
   RF_Send(AckMsg);
 }
 
-// Action : Retour Message d'erreur (commande inconnue).
+// ########################## Retour Message d'erreur (commande inconnue). ##########################
 void unrecognized(const char *command) {
   AckMsgTmp = "ERR unknown_command ADR " + String(ID_ARDUINO);
   char AckMsg[AckMsgTmp.length()+1]; 
