@@ -11,7 +11,7 @@ Imports System.Text.RegularExpressions
 'Le driver communique en "COM" avec l'arduino maitre qui doit implémenter un sketch spécifique
 '************************************************
 
-Public Class Driver_ArduinoPlusPlus_USB
+Public Class Driver_Arduino_USB
     Implements HoMIDom.HoMIDom.IDriver
 
 #Region "Variables génériques"
@@ -44,6 +44,7 @@ Public Class Driver_ArduinoPlusPlus_USB
     Dim _idsrv As String
     Dim _DeviceCommandPlus As New List(Of HoMIDom.HoMIDom.Device.DeviceCommande)
     Dim _AutoDiscover As Boolean = False
+    Dim _acknowledge As Boolean = False
 
     'param avancé
     Dim _DEBUG As Boolean = False
@@ -256,11 +257,7 @@ Public Class Driver_ArduinoPlusPlus_USB
                 If Command = "" Then
                     Return False
                 Else
-                    'Write(deviceobject, Command, Param(0), Param(1))
-                    Select Case UCase(Command)
-                        Case ""
-                        Case Else
-                    End Select
+                    Write(MyDevice, Command, Param(0), Param(1))
                     Return True
                 End If
             Else
@@ -339,6 +336,7 @@ Public Class Driver_ArduinoPlusPlus_USB
                 serialPortObj.DataBits = 8
                 serialPortObj.StopBits = 1
                 serialPortObj.ReadTimeout = 50000
+                serialPortObj.Encoding = System.Text.Encoding.GetEncoding("ISO-8859-1")
 
                 If _RCVERROR Then AddHandler serialPortObj.ErrorReceived, New SerialErrorReceivedEventHandler(AddressOf serialPortObj_ErrorReceived)
                 AddHandler serialPortObj.DataReceived, New SerialDataReceivedEventHandler(AddressOf DataReceived)
@@ -355,22 +353,36 @@ Public Class Driver_ArduinoPlusPlus_USB
             Else
                 _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Start", "Port " & _Com & " déjà ouvert")
             End If
+
+            '' Initialisation des I/O utilisées
+            'Dim ListeDevices = New ArrayList
+            'ListeDevices = _Server.ReturnDeviceByDriver(_idsrv, Me._ID, True)
+            'If ListeDevices IsNot Nothing Then
+            '    For Each _dev In ListeDevices
+
+            '        Dim arduinocommande As String = ""
+
+            '                Select UCase(_dev.modele.ToString)
+            '            Case "ANALOG_IN"
+            '                arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 0"
+            '            Case "ANALOG_OUT"
+            '                arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 1"
+            '            Case "DIGITAL_IN"
+            '                arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 0"
+            '            Case "DIGITAL_OUT"
+            '                arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 1"
+            '            Case Else
+            '                'WriteLog("ERR: Send AC : Commande invalide : " & Command() & " (ON/OFF/DIM/PWM supporté sur une SORTIE: Analogique write)")
+            '        End Select
+            '        serialPortObj.WriteLine(arduinocommande)
+            '        '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Liste de composants : ", "Arduino N° " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+            '    Next
+            'Else
+            '    _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Liste de composants : ", "Aucun composant Arduino++_USB trouvé...")
+            'End If
+
         Catch ex As Exception
             _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Start", ex.ToString)
-        End Try
-
-        ' Initialisation des I/O utilisées
-        Try
-            Dim ListeDevices As New ArrayList
-            ListeDevices = _Server.ReturnDeviceByDriver(_idsrv, Me._ID, True)
-            If ListeDevices IsNot Nothing Then
-                For Each _dev In ListeDevices
-                    _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Liste de composants : ", "Arduino N° " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Valeur " & _dev.valeur.ToString)
-                Next
-            End If
-
-        Catch ex As Exception
-
         End Try
     End Sub
 
@@ -431,21 +443,24 @@ Public Class Driver_ArduinoPlusPlus_USB
             '    End Select
             'Else
             Select Case UCase(Objet.Modele)
+                Case "VARIABLE"
+                    arduinocommande = "ACT ADR " & Objet.Adresse1 & " VR " & Objet.Adresse2
+                    WriteLog("DBG: Commande passée à l arduino de type : VARIABLE")
                 Case "ANALOG_IN"
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " AR " & Objet.Adresse2
+                    arduinocommande = "ACT ADR " & Objet.Adresse1 & " AR " & Objet.Adresse2
                     WriteLog("DBG: Commande passée à l arduino de type : ANALOG_IN")
                 Case "DIGITAL_IN"
                     WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_IN")
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DR " & Objet.Adresse2
+                    arduinocommande = "ACT ADR " & Objet.Adresse1 & " DR " & Objet.Adresse2
                 Case "DHTXX"
                     WriteLog("DBG: Commande passée à l arduino de type : DHTXX")
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DHTXX " & Objet.Adresse2
+                    arduinocommande = "ACT ADR " & Objet.Adresse1 & " DHTXX " & Objet.Adresse2
                 Case "BMP180"
                     WriteLog("DBG: Commande passée à l arduino de type : BMP180")
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " BMP180 " & Objet.Adresse2
+                    arduinocommande = "ACT ADR " & Objet.Adresse1 & " BMP180 " & Objet.Adresse2
                 Case "CUSTOM"
                     WriteLog("DBG: Commande passée à l arduino de type : CUSTOM")
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " " & Objet.Adresse2
+                    arduinocommande = "ACT ADR " & Objet.Adresse1 & " " & Objet.Adresse2
                 Case "1WIRE"
                     WriteLog("le 1-wire n'est pas encore géré :" & Objet.Name)
                     Exit Sub
@@ -491,65 +506,164 @@ Public Class Driver_ArduinoPlusPlus_USB
 
             Dim arduinocommande As String = ""
 
-            Select Case UCase(Objet.Modele)
-                Case "ANALOG_IN"
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " AR " & Objet.Adresse2
-                    WriteLog("DBG: Commande passée à l arduino de type : ANALOG_IN")
-                Case "DIGITAL_IN"
-                    WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_IN")
-                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DR " & Objet.Adresse2
-                Case "DIGITAL_OUT"
-                    'Digital Write
-                    WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_OUT")
-                    Select Case Command
-                        Case "ON" : arduinocommande = "RF ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " 1"
-                        Case "OFF" : arduinocommande = "RF ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " 0"
+            If Command = "CONFIG_TYPE_PIN" Then
+                Select Case UCase(Objet.Modele)
+                    Case "ANALOG_IN"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " PM " & Objet.Adresse2 & " 0"
+                    Case "DIGITAL_IN"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " PM " & Objet.Adresse2 & " 0"
+                    Case "DIGITAL_OUT"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " PM " & Objet.Adresse2 & " 1"
+                    Case "DIGITAL_PWM"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " PM " & Objet.Adresse2 & " 1"
+                    Case "LCD"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " PM " & Objet.Adresse2 & " 1"
+                    Case "KPAD"
+                        ' Pas d'initialisation
+                    Case "1WIRE"
+                        ' Pas d'initialisation
+                    Case "DHTxx"
+                        ' Pas d'initialisation
+                    Case "BMP180"
+                        ' Pas d'initialisation
+                    Case Else
+                        WriteLog("ERR: WRITE CONFIG_TYPE_PIN : Ce type de PIN ne peut pas être configuré : " & Objet.Modele.ToString.ToUpper & " (" & Objet.Name & ")")
+                        Exit Sub
+                End Select
+            ElseIf Command = "SETLCD" Then
+                WriteLog("DBG: Commande passée à l arduino de type : SETLCD")
+                Select Case UCase(Objet.Modele)
+                    Case "LCD"
+                        If Not IsNothing(Parametre1) And Not IsNothing(Parametre2) Then
+                            Dim Parametre2a As String = Parametre2.Replace(" ", "/#")
+                            arduinocommande = "ACT ADR " & Objet.Adresse1 & " SETLCD " & Parametre1 & " " & Parametre2a
+                            WriteLog("DBG: Commande passée à l arduino : " & arduinocommande)
+                        Else
+                            WriteLog("ERR: WRITE DIM Il manque au moins un parametre (" & Objet.Name & ")")
+                        End If
+                    Case Else
+                        WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF ou SETLCD supportés)")
+                        Exit Sub
+                End Select
+                'Else
+                '   WriteLog("ERR: WRITE SETVAR : Il manque la valeur à passer à la variable en parametre : " & Objet.Modele.ToString.ToUpper & " (" & Objet.Name & ")")
+                '  Exit Sub
+                'End If
+            ElseIf Command = "SETVAR" Then
+                If Not IsNothing(Parametre1) Then
+                    Select Case UCase(Objet.Modele)
+                        Case "VARIABLE" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " VW " & Objet.Adresse2 & "_" & Parametre1
                         Case Else
-                            WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF supporté sur une SORTIE: digital write)")
+                            WriteLog("ERR: WRITE SETVAR : Seulement une variable peut utilisé la fonction SETVAR : " & Objet.Modele.ToString.ToUpper & " (" & Objet.Name & ")")
                             Exit Sub
                     End Select
-                Case "DIGITAL_PWM"
-                    'Analogique write (0-255)
-                    'on convertit ON/OFF/DIM en DIM de 0 à 255 (commande PWM sur l'arduino)
-                    WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_PWM")
-                    Select Case Command
-                        Case "ON" : arduinocommande = "RF ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse2 & " 255"
-                        Case "OFF" : arduinocommande = "RF ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse2 & " 0"
-                        Case "DIM"
-                            If Not IsNothing(Parametre1) Then
-                                If IsNumeric(Parametre1) Then
-                                    'Conversion du parametre de % (0 à 100) en 0 à 255
-                                    Parametre1 = CInt(Parametre1 * 255 / 100)
-                                    arduinocommande = "RF ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " " & Parametre1
-                                Else
-                                    WriteLog("ERR: WRITE DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
-                                End If
-                            Else
-                                WriteLog("ERR: WRITE DIM Il manque un parametre (" & Objet.Name & ")")
-                            End If
-                        Case "PWM"
-                            If Not IsNothing(Parametre1) Then
-                                If IsNumeric(Parametre1) Then
-                                    If CInt(Parametre1) > 255 Then Parametre1 = 255
-                                    If CInt(Parametre1) < 0 Then Parametre1 = 0
-                                    arduinocommande = "RF ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse1 & " " & Parametre1
-                                Else
-                                    WriteLog("ERR: WRITE DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
-                                End If
-                            Else
-                                WriteLog("ERR: WRITE DIM Il manque un parametre (" & Objet.Name & ")")
-                            End If
-                        Case Else
-                            WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF/DIM/PWM supporté sur une SORTIE: Analogique write)")
-                            Exit Sub
-                    End Select
-                Case ""
-                    WriteLog("ERR: WRITE Pas de protocole d'emission pour " & Objet.Name)
+                Else
+                    WriteLog("ERR: WRITE SETVAR : Il manque la valeur à passer à la variable en parametre : " & Objet.Modele.ToString.ToUpper & " (" & Objet.Name & ")")
                     Exit Sub
-                Case Else
-                    WriteLog("ERR: WRITE Protocole non géré : " & Objet.Modele.ToString.ToUpper)
-                    Exit Sub
-            End Select
+                End If
+            ElseIf Command = "READX" Then
+                '    arduinocommande = "ACT ADR " & Objet.Adresse1 & "/?homidom_READX"
+            Else
+                    Select Case UCase(Objet.Modele)
+                    'Case "VARIABLE"
+                    'Select Case Command
+                    '    '                Case "ON" : arduinocommande = "ACT ADR " & Objet.Adresse1 & "/?homidom_WRITV_" & Objet.Adresse2 & "_1"
+                    '    '                Case "OFF" : arduinocommande = "ACT ADR " & Objet.Adresse1 & "/?homidom_WRITV_" & Objet.Adresse2 & "_0"
+                    '    Case "DIM", "OUVERTURE", "PWM"
+                    '        If Not IsNothing(Parametre1) Then
+                    '            If IsNumeric(Parametre1) Then
+                    '                '                            arduinocommande = "ACT ADR " & Objet.Adresse1 & "/?homidom_WRITV_" & Objet.Adresse2 & "_" & CInt(Parametre1)
+                    '            Else
+                    '                WriteLog("ERR: WRITE VAR DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
+                    '                Exit Sub
+                    '            End If
+                    '        Else
+                    '            WriteLog("ERR: WRITE VAR DIM Il manque un parametre pour DIM (" & Objet.Name & ")")
+                    '            Exit Sub
+                    '        End If
+                    '    Case Else
+                    '        'on lit la valeur par défault
+                    '        '                    arduinocommande = "ACT ADR " & Objet.Adresse1 & "/?homidom_READV_" & Objet.Adresse2
+                    '        Exit Sub
+                    'End Select
+                    Case "CUSTOM"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " " & Objet.Adresse2
+                        WriteLog("DBG: Commande passée à l arduino de type : ANALOG_IN")
+                    Case "ANALOG_IN"
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " AR " & Objet.Adresse2
+                        WriteLog("DBG: Commande passée à l arduino de type : ANALOG_IN")
+                    Case "DIGITAL_IN"
+                        WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_IN")
+                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " DR " & Objet.Adresse2
+                    Case "DIGITAL_OUT"
+                        'Digital Write
+                        WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_OUT")
+                        Select Case Command
+                            Case "ON" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " 1"
+                            Case "OFF" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " 0"
+                            Case Else
+                                WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF supporté sur une SORTIE: digital write)")
+                                Exit Sub
+                        End Select
+                    Case "DIGITAL_PWM"
+                        'Analogique write (0-255)
+                        'on convertit ON/OFF/DIM en DIM de 0 à 255 (commande PWM sur l'arduino)
+                        WriteLog("DBG: Commande passée à l arduino de type : DIGITAL_PWM")
+                        Select Case Command
+                            Case "ON" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse2 & " 255"
+                            Case "OFF" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse2 & " 0"
+                            Case "DIM"
+                                If Not IsNothing(Parametre1) Then
+                                    If IsNumeric(Parametre1) Then
+                                        'Conversion du parametre de % (0 à 100) en 0 à 255
+                                        Parametre1 = CInt(Parametre1 * 255 / 100)
+                                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " DW " & Objet.Adresse2 & " " & Parametre1
+                                    Else
+                                        WriteLog("ERR: WRITE DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
+                                    End If
+                                Else
+                                    WriteLog("ERR: WRITE DIM Il manque un parametre (" & Objet.Name & ")")
+                                End If
+                            Case "PWM"
+                                If Not IsNothing(Parametre1) Then
+                                    If IsNumeric(Parametre1) Then
+                                        If CInt(Parametre1) > 255 Then Parametre1 = 255
+                                        If CInt(Parametre1) < 0 Then Parametre1 = 0
+                                        arduinocommande = "ACT ADR " & Objet.Adresse1 & " PWM " & Objet.Adresse1 & " " & Parametre1
+                                    Else
+                                        WriteLog("ERR: WRITE DIM Le parametre " & CStr(Parametre1) & " n'est pas un entier (" & Objet.Name & ")")
+                                    End If
+                                Else
+                                    WriteLog("ERR: WRITE DIM Il manque un parametre (" & Objet.Name & ")")
+                                End If
+                            Case Else
+                                WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF/DIM/PWM supporté sur une SORTIE: Analogique write)")
+                                Exit Sub
+                        End Select
+                    Case "LCD"
+                        'Digital Write
+                        WriteLog("DBG: Commande passée à l arduino de type : LCD")
+                        Select Case Command
+                            Case "ON" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " LCD " & Objet.Adresse2 & " 1"
+                            Case "OFF" : arduinocommande = "ACT ADR " & Objet.Adresse1 & " LCD " & Objet.Adresse2 & " 0"
+                                'Case "SETLCD"
+                                '    If Not IsNothing(Parametre1) And Not IsNothing(Parametre2) Then
+                                '        arduinocommande = "ACT ADR " & Objet.Adresse1 & " SETLCD " & Parametre1 & " " & Parametre2
+                                '    Else
+                                '        WriteLog("ERR: WRITE DIM Il manque au moins un parametre (" & Objet.Name & ")")
+                                '    End If
+                            Case Else
+                                WriteLog("ERR: Send AC : Commande invalide : " & Command & " (ON/OFF ou SETLCD supportés)")
+                                Exit Sub
+                        End Select
+                    Case ""
+                        WriteLog("ERR: WRITE Pas de protocole d'emission pour " & Objet.Name)
+                        Exit Sub
+                    Case Else
+                        WriteLog("ERR: WRITE Protocole non géré : " & Objet.Modele.ToString.ToUpper)
+                        Exit Sub
+                End Select
+            End If
 
             WriteLog("DBG: Commande passée à l arduino : " & arduinocommande)
             serialPortObj.WriteLine(arduinocommande) ', 0, 8)
@@ -658,6 +772,7 @@ Public Class Driver_ArduinoPlusPlus_USB
             add_paramavance("Debug", "Activer le Debug complet (True/False)", False)
             add_paramavance("BaudRate", "Vitesse du port COM (57600 ou 9600)", 9600)
             add_paramavance("ErrorReceived", "Gérer les erreurs de réception (True=Activé, False=Désactivé)", True)
+            'add_paramavance("AutoDiscover", "Permet de créer automatiquement des composants si ceux-ci n'existent pas encore (True/False)", False)
 
             'liste des devices compatibles
             _DeviceSupport.Add(ListeDevices.APPAREIL.ToString)
@@ -686,8 +801,12 @@ Public Class Driver_ArduinoPlusPlus_USB
 
             'ajout des commandes avancées pour les devices
             'add_devicecommande("COMMANDE", "DESCRIPTION", nbparametre)
-            'add_devicecommande("CONFIG_TYPE_PIN", "configurer le type de PIN sur l arduino suivant les propriétés du composant", 0)
-            'add_devicecommande("PWM", "Envoyer une commande PWM avec une valeur de 0 à 255", 1)
+            'add_devicecommande("CUSTOM", "Executer une commande specifique sur l arduino.", 0)
+            add_devicecommande("CONFIG_TYPE_PIN", "configurer le type de PIN sur l arduino suivant les propriétés du composant", 0)
+            add_devicecommande("PWM", "Envoyer une commande PWM avec une valeur de 0 à 255", 1)
+            add_devicecommande("SETVAR", "Envoyer une valeur de type string à une variable sur l arduino", 1)
+            add_devicecommande("READX", "Lire les valeurs de toutes les entrées de l'arduino et mettre tous les composants Homidom à jour", 1)
+            add_devicecommande("SETLCD", "Ecrire un texte sur un ecran LCD.", 2)
 
             'Libellé Driver
             Add_LibelleDriver("HELP", "Aide...", "Pas d'aide actuellement...")
@@ -696,8 +815,8 @@ Public Class Driver_ArduinoPlusPlus_USB
             Add_LibelleDevice("ADRESSE1", "Adresse Arduino", "Adresse de l arduino gérant ce composant (0:Arduino maitre ou 1-255: Arduino esclave)")
             Add_LibelleDevice("ADRESSE2", "Numéro du PIN ou de périphérique connecté à l'arduino", "Valeur de type numérique")
             Add_LibelleDevice("SOLO", "@", "")
-            Add_LibelleDevice("MODELE", "TYPE PIN/MODELE", "Type de PIN : ANALOG_IN(Analogique Read)/DIGITAL_IN(Digital Read)/DIGITAL_OUT(Digital write: ON/OFF)/DIGITAL_PWM(Analogique write: 0-255) ou de Modèle : 1WIRE", "ANALOG_IN|DIGITAL_IN|DIGITAL_OUT|DIGITAL_PWM|1WIRE|DHTXX|BMP180|RTC")
-            Add_LibelleDevice("REFRESH", "@", "")
+            Add_LibelleDevice("MODELE", "TYPE PIN/MODELE", "Type de PIN : ANALOG_IN(Analogique Read)/DIGITAL_IN(Digital Read)/DIGITAL_OUT(Digital write: ON/OFF)/DIGITAL_PWM(Analogique write: 0-255) ou de Modèle : 1WIRE", "CUSTOM|ANALOG_IN|DIGITAL_IN|DIGITAL_OUT|DIGITAL_PWM|1WIRE|VARIABLE|DHTXX|BMP180|RTC|LCD|KPAD")
+            Add_LibelleDevice("REFRESH", "Refresh", "0")
             'Add_LibelleDevice("LASTCHANGEDUREE", "LastChange Durée", "")
         Catch ex As Exception
             _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " New", ex.Message)
@@ -743,48 +862,111 @@ Public Class Driver_ArduinoPlusPlus_USB
     ''' <remarks></remarks>
     Private Sub DataReceived(ByVal sender As Object, ByVal e As SerialDataReceivedEventArgs)
         Try
-            If first Then
-                first = False
-            Else
-                'on attend d'avoir le reste
-                System.Threading.Thread.Sleep(500)
+            'If first Then
+            'first = False
+            'Else
+            'on attend d'avoir le reste
+            'System.Threading.Thread.Sleep(500)
 
-                Dim line As String = serialPortObj.ReadExisting
-                line = line.Replace(vbCr, "").Replace(vbLf, "")
-                _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " DataReceived", "Données reçues: " & line)
-                Dim aryLine() As String
-                aryLine = line.Split(" ")
-                If UBound(aryLine) >= 5 Then
-                    Dim Adresse1 As String = aryLine(2)
-                    Dim Commande As String = aryLine(3)
-                    Dim Adresse2 As String = aryLine(4)
-                    Dim Valeur As String = aryLine(5)
-                    Select Case aryLine(3)
-                        Case "AW"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                            '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & Commande & " Commande executée")
-                        Case "AR"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                        Case "DW"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                            '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & Commande & " Commande executée")
-                        Case "PWM"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                            ' _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "Ack:" & Commande & " Commande executée")
-                        Case "DR"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                        Case "DHTXX"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                        Case "BMP180"
-                            traitement("", Adresse1, Adresse2, Valeur)
-                        Case Else
-                            _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Datareceived", "Erreur:" & Commande & " Commande inconnue !")
-                    End Select
+            '                Dim line As String = serialPortObj.ReadExisting
+            serialPortObj.ReadTimeout = 1000
+            Do
+                Dim line As String = serialPortObj.ReadLine()
+                If line Is Nothing Then
+                    Exit Do
+                Else
+                    line = line.Replace(vbCr, "").Replace(vbLf, "")
+                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " DataReceived", "Données reçues: " & line)
+                    Dim aryLine() As String
+                    aryLine = line.Split(" ")
+                    ' Initialisation des I/O après réception de l'initialisation des Arduino
+                    If UBound(aryLine) < 5 And aryLine(0).ToString.ToUpper = "INIT" Then
+                        Dim listedevices As New ArrayList
+
+                        listedevices = _Server.ReturnDeviceByAdresse1TypeDriver(_idsrv, aryLine(2).ToString, "", Me._ID, True)
+                        If listedevices IsNot Nothing Then
+                            For Each _dev In listedevices
+                                Dim arduinocommande As String = ""
+                                _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Initialisation : ", "Arduino " & _dev.adresse1.ToString)
+                                Select Case UCase(_dev.modele.ToString)
+                                    Case "ANALOG_IN"
+                                        arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 2"
+                                        _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Initialisation de l'I/O : ", "Arduino " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+                                    Case "DIGITAL_IN"
+                                        arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 0"
+                                        _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Initialisation de l'I/O : ", "Arduino " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+                                    Case "LCD"
+                                        arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 1"
+                                        _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Initialisation de l'I/O : ", "Arduino " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+                                    Case "DIGITAL_OUT"
+                                        arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 1"
+                                        _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Initialisation de l'I/O : ", "Arduino " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+                                    Case "DIGITAL_PWM"
+                                        arduinocommande = "ACT ADR " & _dev.adresse1.ToString & " PM " & _dev.adresse2.ToString & " 3"
+                                        _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Initialisation de l'I/O : ", "Arduino " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+                                    Case Else
+                                        'WriteLog("ERR: Send AC : Commande invalide : " & Command() & " (ON/OFF/DIM/PWM supporté sur une SORTIE: Analogique write)")
+                                End Select
+                                serialPortObj.WriteLine(arduinocommande & vbCr)
+                                '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Liste de composants : ", "Arduino N° " & _dev.adresse1.ToString & " Pin " & _dev.adresse2.ToString & " Type " & _dev.type.ToString & " Modele " & _dev.modele.ToString)
+                                Dim i = 0
+                                Do While (i < 5 And _acknowledge = False)
+                                    i += 1
+                                    Threading.Thread.Sleep(1000)
+                                Loop
+                                _acknowledge = False
+                            Next
+                        Else
+                            _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Initialisation : ", "Aucun composant Arduino++_USB sur adresse " & aryLine(3).ToString & " trouvé...")
+                        End If
+                    End If
+
+                    If UBound(aryLine) < 5 And aryLine(0).ToString.ToUpper = "ACK" Then
+                        _acknowledge = True
+                    End If
+                    ' Action après réception d'une trame sur le port COM/USB
+                    If UBound(aryLine) >= 5 Then
+                        Dim Commande As String = aryLine(3)
+                        Dim Valeur As String = aryLine(5)
+                        If aryLine(0) = "DEBUG" Then
+                            _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "From Arduino : " & line)
+                        Else
+                            Select Case aryLine(3)
+                                Case "PM"
+                                    _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                Case "AR"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("11", aryLine(2), aryLine(4), aryLine(5))
+                                Case "DW"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("9", aryLine(2), aryLine(4), aryLine(5))
+                                Case "PWM"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("11", aryLine(2), aryLine(4), aryLine(5))
+                                Case "DR"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("9", aryLine(2), aryLine(4), aryLine(5))
+                                Case "DHTXX"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("12", aryLine(2), aryLine(4), aryLine(5))
+                                    traitement("18", aryLine(2), aryLine(4), aryLine(6))
+                                Case "BMP180"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("1", aryLine(2), aryLine(4), aryLine(5))
+                                Case "LCD"
+                                    _Server.Log(TypeLog.DEBUG, TypeSource.DRIVER, Me.Nom & " Datareceived", "ACK : " & aryLine(3) & " Commande executée")
+                                    traitement("9", aryLine(2), aryLine(4), aryLine(5))
+                                Case Else
+                                    _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Datareceived", "Erreur : " & aryLine(3) & " Commande inconnue !")
+                            End Select
+                        End If
+                    End If
+                    'End If
                 End If
-            End If
+            Loop
 
         Catch Ex As Exception
-            _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Datareceived", "Erreur:" & Ex.ToString)
+            '_Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Datareceived", "Erreur:" & Ex.ToString)
         End Try
     End Sub
 
@@ -798,16 +980,72 @@ Public Class Driver_ArduinoPlusPlus_USB
 
             'Recherche si un device affecté
             Dim listedevices As New ArrayList
+            Dim _Type As String = ""
 
-            listedevices = _Server.ReturnDeviceByAdresse1TypeDriver(_idsrv, adresse, type, Me._ID, True)
-            'un device trouvé on maj la value
+            Select Case type
+                Case 0
+                    _Type = "APPAREIL"
+                Case 1
+                    _Type = "BAROMETRE"
+                Case 2
+                    _Type = "BATTERIE"
+                Case 3
+                    _Type = "COMPTEUR"
+                Case 4
+                    _Type = "CONTACT"
+                Case 5
+                    _Type = "DETECTEUR"
+                Case 6
+                    _Type = "DIRECTIONVENT"
+                Case 7
+                    _Type = "ENERGIEINSTANTANEE"
+                Case 8
+                    _Type = "ENERGIETOTALE"
+                Case 9
+                    _Type = "GENERIQUEBOOLEEN"
+                Case 10
+                    _Type = "GENERIQUESTRING"
+                Case 11
+                    _Type = "GENERIQUEVALUE"
+                Case 12
+                    _Type = "HUMIDITE"
+                Case 13
+                    _Type = "LAMPE"
+                Case 14
+                    _Type = "PLUIECOURANT"
+                Case 15
+                    _Type = "PLUIETOTAL"
+                Case 16
+                    _Type = "SWITCH"
+                Case 17
+                    _Type = "TELECOMMANDE"
+                Case 18
+                    _Type = "TEMPERATURE"
+                Case 19
+                    _Type = "TEMPERATURECONSIGNE"
+                Case 20
+                    _Type = "UV"
+                Case 21
+                    _Type = "VITESSEVENT"
+                Case 22
+                    _Type = "VOLET"
+
+                Case Else
+                    _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Process", "Le type de device n'appartient pas à ce driver: " & type)
+                    Exit Sub
+            End Select
+
+            '            listedevices = _Server.ReturnDeviceByAdresse1TypeDriver(_idsrv, adresse, type, Me._ID, True)
+            listedevices = _Server.ReturnDeviceByAdresse1TypeDriver(_idsrv, adresse, _Type, Me._ID, True)
+            'un device trouvé on maj la valeur
             If (listedevices.Count = 1) Then
                 listedevices.Item(0).Value = valeur
+                _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Reception : ", "Arduino N° " & adresse & " Pin " & adresse2 & " Valeur " & valeur)
             ElseIf (listedevices.Count > 1) Then
                 For i As Integer = 0 To listedevices.Count - 1
                     If (listedevices.Item(i).adresse2.ToUpper() = adresse2.ToUpper()) Then
                         listedevices.Item(i).Value = valeur
-                        _Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Reception : ", "Arduino N° " & adresse & " Pin " & adresse2 & " Valeur " & valeur)
+                        '_Server.Log(TypeLog.INFO, TypeSource.DRIVER, Me.Nom & " Reception : ", "Arduino N° " & adresse & " Pin " & adresse2 & " Valeur " & valeur)
                     End If
                 Next
                 '_Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Process", "Plusieurs devices correspondent à : " & adresse)
@@ -819,7 +1057,7 @@ Public Class Driver_ArduinoPlusPlus_USB
                 ' Else
                 ' _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " Process", "Device non trouvé : " & type & " " & adresse & ":" & valeur)
                 ' End If
-                    End If
+            End If
         Catch ex As Exception
             _Server.Log(TypeLog.ERREUR, TypeSource.DRIVER, Me.Nom & " traitement", "Exception : " & ex.Message & " --> " & adresse & " : " & valeur)
         End Try

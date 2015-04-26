@@ -1,3 +1,0 @@
-C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.vbprojResolveAssemblyReference.cache
-C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_ArduinoPlusPlus_USB.Resources.resources
-C:\SVN\HoMIDoM\Drivers\Driver_Arduino++_USB\obj\Debug\Driver_Arduino++_USB.vbproj.GenerateResource.Cache

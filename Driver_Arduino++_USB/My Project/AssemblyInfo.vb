@@ -8,11 +8,11 @@ Imports System.Runtime.InteropServices
 
 ' Review the values of the assembly attributes
 
-<Assembly: AssemblyTitle("Driver_Arduino++_USB")> 
+<Assembly: AssemblyTitle("Driver_Arduino_USB")> 
 <Assembly: AssemblyDescription("")> 
 <Assembly: AssemblyCompany("HoMIDoM")> 
-<Assembly: AssemblyProduct("Driver_Arduino++_USB")> 
-<Assembly: AssemblyCopyright("Copyright © HoMIDoM 2011")> 
+<Assembly: AssemblyProduct("Driver_Arduino_USB")> 
+<Assembly: AssemblyCopyright("Copyright © HoMIDoM 2015")> 
 <Assembly: AssemblyTrademark("")> 
 
 <Assembly: ComVisible(False)>
