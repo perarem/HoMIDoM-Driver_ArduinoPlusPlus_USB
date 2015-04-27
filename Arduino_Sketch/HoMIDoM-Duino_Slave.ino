@@ -8,7 +8,6 @@
 
 #include <VirtualWire.h>
 #include <Wire.h>
-//#include "DHTxx.h"
 
 // Zone definition RTC (Optionnel) //
 #include <RTClib.h>
@@ -129,11 +128,15 @@ void setup()
 
 void loop() {
   RF_Rec(); // Reception d'une trame RF
-  LCD_Key(); // Lecture du clavier LCD
+  KeyPad(); // Lecture du clavier numérique
 }
 
 // ####################################  ####################################
 void LCD_Key(){
+}
+
+// ####################################  ####################################
+void KeyPad(){
 }
 
 // #################################### Reception d'une trame RF ####################################
@@ -172,6 +175,11 @@ void RF_Rec(){
           char AckMsg[AckMsgTmp.length()+1];
           AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
           RF_Send(AckMsg);
+        }
+
+// Traitemant d'une commande RESET ) //
+        if (strcmp(str,"RESET")== 0) {
+          reset_command();
         }
 
 // Traitemant d'une commande DR (Digital Read) //
@@ -285,7 +293,6 @@ void RF_Rec(){
           }
           Serial.println("");
         }
-        if (strcmp(str,"RESET") == 0) reset_command();
         
 // Traitement d'une sonde de type DHTxx (Temperature & Hygrometrie) //        
         if (strcmp(str,"DHTXX") == 0) {

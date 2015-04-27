@@ -33,6 +33,45 @@ DeviceAddress Sonde_1 = { 0x28, 0xFF, 0x5B, 0x25, 0x62, 0x14, 0x03, 0x83 };
 #define DHTTYPE DHT22    // Type de sonde : DHT11, DHT 22 (AM2302),DHT 21 (AM2301)
 DHT dht(DHTPIN, DHTTYPE);
 
+// Zone définition LCD //
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8, 7, 14, 15, 16, 17);           // select the pins used on the LCD panel
+int lcd_key     = 0;
+int adc_key_in  = 0;
+#define btnRIGHT  0
+#define btnUP     1
+#define btnDOWN   2
+#define btnLEFT   3
+#define btnSELECT 4
+#define btnNONE   5
+
+int read_LCD_buttons(){               // read the buttons
+    adc_key_in = analogRead(0);       // read the value from the sensor 
+
+    // my buttons when read are centered at these valies: 0, 144, 329, 504, 741
+    // we add approx 50 to those values and check to see if we are close
+    // We make this the 1st option for speed reasons since it will be the most likely result
+
+    if (adc_key_in > 1000) return btnNONE; 
+/*
+    // For V1.1 us this threshold
+    if (adc_key_in < 50)   return btnRIGHT;  
+    if (adc_key_in < 250)  return btnUP; 
+    if (adc_key_in < 450)  return btnDOWN; 
+    if (adc_key_in < 650)  return btnLEFT; 
+    if (adc_key_in < 850)  return btnSELECT;  
+*/
+
+   // For V1.0 comment the other threshold and use the one below:
+     if (adc_key_in < 50)   return btnRIGHT;  
+     if (adc_key_in < 195)  return btnUP; 
+     if (adc_key_in < 380)  return btnDOWN; 
+     if (adc_key_in < 555)  return btnLEFT; 
+     if (adc_key_in < 790)  return btnSELECT;   
+
+    return btnNONE;                // when all others fail, return this.
+}
+
 // Zone définotion des constantes (a adapter en fonction de la configuration)
 const boolean DEBUG = false;     // Activation du mode DEBUG
 const int ID_ARDUINO = 0;       // Adresse du module Arduino peripherique (1 - 99)
@@ -89,9 +128,19 @@ void loop() {
   Read_Serial();
   delay(100);
   Read_RF();
-  delay(100);
+  LCD_Key(); // Lecture du clavier LCD
+  KeyPad(); // Lecture du clavier numérique
 }
 
+// ####################################  ####################################
+void LCD_Key(){
+}
+
+// ####################################  ####################################
+void KeyPad(){
+}
+
+// #################################### Reception d'une trame RF ####################################
 void Read_RF() {
     uint8_t buf[VW_MAX_MESSAGE_LEN]="";
     uint8_t buflen = VW_MAX_MESSAGE_LEN;
@@ -100,7 +149,6 @@ void Read_RF() {
       char *AckMsg = (char*)buf;
       Serial.print(AckMsg);
       Serial.print('\n');
-      //delay(200);
     }
 }
 
@@ -279,7 +327,7 @@ void Read_Serial(){
           if (isnan(h) || isnan(t)) { 
             //Serial.println("Failed to read from DHTXX sensor!"); 
           } 
-          String AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " DHTXX " + pin + " " + String(t) + " " + String(h);
+          String AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " DHTXX " + pin + " " + String(h) + " " + String(t);
           char AckMsg[AckMsgTmp.length()+1];
           AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
           ACK_Send(AckMsg);
@@ -333,6 +381,55 @@ void Read_Serial(){
             ACK_Send(AckMsg);
           }
         }
+// Traitement d'un ecran LCD //
+        if (strcmp(str,"LCD") == 0) {
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          int pin = atoi(str);
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          int val = atoi(str);
+          digitalWrite(pin, val);
+          AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " LCD " + String(pin) + " " + String(val);
+          char AckMsg[AckMsgTmp.length()+1];
+          AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+          ACK_Send(AckMsg);
+          }
+        if (strcmp(str,"SETLCD") == 0) {
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          String param1 = str;
+          int CurCol, CurLgn;
+          for (int i = 0; i < param1.length(); i++) {
+            if (param1.substring(i, i+1) == ",") {
+              CurCol = param1.substring(0, i).toInt();
+              CurLgn = param1.substring(i+1).toInt();
+              break;
+            }
+          }
+          str = strtok_r(p, " ", &p);
+          if (str == NULL) {
+            argument_error();
+            return;
+          }
+          String param2 = str;
+          param2.replace("/#"," ");
+          lcd.setCursor(CurCol,CurLgn);
+          lcd.print(param2);
+          AckMsgTmp = "ACK ADR " + String(ID_ARDUINO) + " SETLCD " + String(param1) + " " + String(param2);
+          char AckMsg[AckMsgTmp.length()+1];
+          AckMsgTmp.toCharArray(AckMsg,AckMsgTmp.length()+1);
+          ACK_Send(AckMsg);
+          }
       }
     }
   }
